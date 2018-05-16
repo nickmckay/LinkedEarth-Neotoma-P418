@@ -9,6 +9,8 @@ Step 1: Create a variable for a spatial search location.
 
 ```{r}
 location <- c(-90,40)
+locpoly <- matrix(c(-70,-71,-71,-70,45,45,44,44),ncol=2,byrow = F)
+
 ```
 
 Step 2: Convert array to GeoJSON FeatureCollection.
@@ -17,8 +19,10 @@ Step 2: Convert array to GeoJSON FeatureCollection.
 #install.packages("geojson")
 library(geojson)
 
-point <- geojson::point(paste('{ "type": "Point", "coordinates": [', location[1], ',' , location[2], '] }'))
-feature <- geojson::feature(point)
+poly <- geojson::polygon(paste0('{ "type": "Polygon", "coordinates": [[', "[",locpoly[1,1],", ",locpoly[1,2],"],", " [",locpoly[2,1],", ",locpoly[2,2],"],", " [",locpoly[3,1],", ",locpoly[3,2],"],", " [",locpoly[4,1],", ", locpoly[4,2],"],", " [",locpoly[1,1],", ", locpoly[1,2],']]] }'))
+
+point <- geojson::point(paste('{ "type": "Point", "coordinates": [', locpoly[1,1], ',' , locpoly[1,2], '] }'))
+feature <- geojson::feature(poly)
 feature_collection <- geojson::featurecollection(feature)
 feature_collection_str <- geo_pretty(feature_collection)
 ```
@@ -60,6 +64,26 @@ number_of_results <- length(features)
 first_result <- features[[1]]
 
 url <- first_result$properties$URL
+library(geosphere)
+#find nearest coord in each feature
+nearestInFeature <- function(feat){
+  if(is.list(feat$geometry$coordinates)){
+    coords <- matrix(unlist((feat$geometry$coordinates)),ncol=2,byrow = T)
+  }else{
+    coords <- matrix((feat$geometry$coordinates),ncol=2,byrow = T)
+  }
+  md =try(min(geosphere::distGeo(coords,locpoly[1,])))
+  if(is.numeric(md)){
+    return(md)
+  }else{
+      return(NA)
+    }
+
+}
+nearestDist <- sapply(results_json$features,nearestInFeature)
+#sort by nearest
+results_json$features <- results_json$features[order(nearestDist)]
+
 allUrls <- sapply(results_json$features,FUN = function(x){x$properties$URL})
 geometry <- first_result$geometry$type
 coordinates <- first_result$geometry$coordinates[[1]]
