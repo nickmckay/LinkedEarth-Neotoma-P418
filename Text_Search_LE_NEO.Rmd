@@ -1,0 +1,142 @@
+---
+title: "Geodex Text Search"
+output:
+  html_document:
+    df_print: paged
+---
+
+Step 1: Create a variable to holding text search value
+
+```{r}
+text_search_value <- "Basin Pond"
+```
+
+Step 2: Set the number of results to return per provider.
+
+```{r}
+number_of_results <- 100
+```
+
+Step 3: Set type of search to harvest top n results per provider.
+
+```{r}
+search_type <- "textindex/searchset"
+```
+
+Step 4: Set the request domain URL for the geodex web service. Please see http://geodex.org/swagger-ui/ for a complete description of the web service call formats. 
+
+```{r}
+domain_url <- "http://geodex.org/api/v1/"
+request_url <- paste(domain_url, search_type, sep="")
+```
+
+Step 5: Create an R list data structure to hold URL submission parameters
+
+```{r}
+params_list <- list(q = text_search_value, s = 0, n = toString(number_of_results))
+```
+
+Step 6: Make call to the Geodex RESTful web service using the requests package.
+
+```{r}
+library(httr)
+r <- GET(request_url, query = params_list)
+results <- content(r, "text", encoding = "ISO-8859-1")
+```
+
+Step 7: Examine the JSON output in a user friendly way.
+
+```{r}
+library(rjson)
+results_json <- fromJSON(results)
+for (i in c(1:length(results_json))){
+  print(paste("Index =", results_json[[i]]$index))
+  print(paste("High Score =", results_json[[i]]$highscore))
+  print(paste("Number of Results =", length(results_json[[i]]$or)))
+}
+
+for (i in c(1:length(results_json[[1]]$or))){
+  print(paste("Position =", results_json[[1]]$or[[i]]$position))
+  print(paste("Score =", results_json[[1]]$or[[i]]$score))
+  print(paste("URL =", results_json[[1]]$or[[i]]$URL))
+}
+```
+
+Step 8: Now set the type of search to harvest top n results across all providers.
+
+```{r}
+search_type <- "textindex/search"
+```
+
+Step 9: Set the new request domain URL for the geodex web service. Please see http://geodex.org/swagger-ui/ for a complete description of the web service call formats. 
+
+```{r}
+domain_url <- "http://geodex.org/api/v1/"
+request_url <- paste(domain_url, search_type, sep="")
+```
+
+Step 10: Make call to the Geodex RESTful web service using the requests package.
+
+```{r}
+r <- GET(request_url, query = params_list)
+results <- content(r, "text", encoding = "ISO-8859-1")
+```
+
+Step 11: Examine the JSON output in a user friendly way.
+
+```{r}
+results_json <- fromJSON(results)
+for (i in c(1:length(results_json))){
+  print(paste("Position =", results_json[[i]]$position))
+  print(paste("Score =", results_json[[i]]$score))
+  print(paste("URL =", results_json[[i]]$URL))
+}
+```
+
+Step 12: Retrieve information about a selected URL resource.
+
+```{r}
+dataset_url <- "http://data.neotomadb.org/datasets/14838/"
+```
+
+Step 13: Set the web service call for extracting a set of metadata.
+
+```{r}
+search_type <- "graph/details"
+```
+
+Step 14: Create the URL for the RESTful web service call.
+
+```{r}
+domain_url <- "http://geodex.org/api/v1/"
+request_url <- paste(domain_url, search_type, sep="")
+```
+
+Step 15: Create the GET parameter for this call.
+
+```{r}
+params_list <- list(r = dataset_url)
+```
+
+Step 16: Execute the RESTful web service call.
+
+```{r}
+r <- GET(request_url, query = params_list)
+results <- content(r, "text", encoding = "ISO-8859-1")
+```
+
+Step 17: Print the results in a user friendly way.
+
+```{r}
+results_json <- fromJSON(results)
+print(paste("URI =", results_json$S))
+print(paste("Alternate Name =", results_json$Aname))
+print(paste("Name =", results_json$Name))
+print(paste("URL =", results_json$URL))
+print(paste("Description =", results_json$Description))
+print(paste("Citation =", results_json$Citation))
+print(paste("Data Published =", results_json$Datepublished))
+print(paste("Dataset Download Link =", results_json$Curl))
+print(paste("Keywords =", results_json$Keywords))
+print(paste("License =", results_json$License))
+```

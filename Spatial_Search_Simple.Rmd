@@ -1,0 +1,126 @@
+---
+title: "Geodex Spatial Search"
+output:
+  html_document:
+    df_print: paged
+---
+
+Step 1: Create a variable for a spatial search location.
+
+```{r}
+location <- c(-90,40)
+```
+
+Step 2: Convert array to GeoJSON FeatureCollection.
+
+```{r}
+#install.packages("geojson")
+library(geojson)
+
+point <- geojson::point(paste('{ "type": "Point", "coordinates": [', location[1], ',' , location[2], '] }'))
+feature <- geojson::feature(point)
+feature_collection <- geojson::featurecollection(feature)
+feature_collection_str <- geo_pretty(feature_collection)
+```
+
+Step 3: Set type of search for spatial search.
+
+```{r}
+search_type <- "spatial/search/object"
+```
+
+Step 4: Set the request domain URL for the geodex web service. Please see http://geodex.org/swagger-ui/ for a complete description of the web service call formats.
+
+```{r}
+domain_url <- "http://geodex.org/api/v1/"
+request_url <- paste(domain_url, search_type, sep="")
+```
+
+Step 5: Create an R list data structure to hold URL submission parameters
+
+```{r}
+params_list <- list(geowithin = feature_collection_str)
+```
+
+Step 6: Make call to the Geodex RESTful web service using the requests package.
+
+```{r}
+library(httr)
+r <- GET(request_url, query = params_list)
+results <- content(r, "text", encoding = "ISO-8859-1")
+```
+
+Step 7: Expore results.
+
+```{r}
+library(rjson)
+results_json <- fromJSON(results)
+features <- results_json$features
+number_of_results <- length(features)
+first_result <- features[[1]]
+
+url <- first_result$properties$URL
+allUrls <- sapply(results_json$features,FUN = function(x){x$properties$URL})
+geometry <- first_result$geometry$type
+coordinates <- first_result$geometry$coordinates[[1]]
+
+print(paste("Number of Results =", number_of_results))
+print(paste("URL of First Result =", url))
+print(paste("Coordinates of First Result = ", coordinates))
+```
+
+Step 8: Retrieve information about a selected URL resource.
+
+```{r}
+dataset_url <- "http://get.iedadata.org/doi/310660"
+```
+
+Step 9: Set the web service call for extracting a set of metadata.
+
+```{r}
+search_type <- "graph/details"
+```
+
+Step 10: Create the URL for the RESTful web service call.
+
+```{r}
+domain_url <- "http://geodex.org/api/v1/"
+request_url <- paste(domain_url, search_type, sep="")
+```
+
+Step 11: Create the GET parameter for this call.
+
+```{r}
+params_list <- list(r = dataset_url)
+```
+
+Step 12: Execute the RESTful web service call.
+
+```{r}
+r <- GET(request_url, query = params_list)
+results <- content(r, "text", encoding = "ISO-8859-1")
+```
+
+Step 13: Print the results in a user friendly way.
+
+```{r}
+results_json <- fromJSON(results)
+print(paste("URI =", results_json$S))
+print(paste("Alternate Name =", results_json$Aname))
+print(paste("Name =", results_json$Name))
+print(paste("URL =", results_json$URL))
+print(paste("Description =", results_json$Description))
+print(paste("Citation =", results_json$Citation))
+print(paste("Data Published =", results_json$Datepublished))
+print(paste("Dataset Download Link =", results_json$Curl))
+print(paste("Keywords =", results_json$Keywords))
+print(paste("License =", results_json$License))
+```
+
+
+
+
+
+
+
+
