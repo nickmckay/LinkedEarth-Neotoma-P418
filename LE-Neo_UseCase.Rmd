@@ -1,17 +1,16 @@
 ---
-title: "Geodex Spatial Search"
+title: "LinkedEarth - Neotoma P418 Use Case"
 output:
   html_document:
     df_print: paged
 ---
 
-Step 1: Create a variable for a spatial search location.
+Step 1: Create a polygon to search for our site.
 
 ```{r}
 locpoly <- matrix(c(-70,-71,-71,-70,45,45,44,44),ncol=2,byrow = F)
 
 ```
-
 Step 2: Convert array to GeoJSON FeatureCollection.
 
 ```{r}
@@ -20,7 +19,6 @@ library(geojson)
 
 poly <- geojson::polygon(paste0('{ "type": "Polygon", "coordinates": [[', "[",locpoly[1,1],", ",locpoly[1,2],"],", " [",locpoly[2,1],", ",locpoly[2,2],"],", " [",locpoly[3,1],", ",locpoly[3,2],"],", " [",locpoly[4,1],", ", locpoly[4,2],"],", " [",locpoly[1,1],", ", locpoly[1,2],']]] }'))
 
-point <- geojson::point(paste('{ "type": "Point", "coordinates": [', locpoly[1,1], ',' , locpoly[1,2], '] }'))
 feature <- geojson::feature(poly)
 feature_collection <- geojson::featurecollection(feature)
 feature_collection_str <- geo_pretty(feature_collection)
@@ -63,6 +61,12 @@ number_of_results <- length(features)
 first_result <- features[[1]]
 
 url <- first_result$properties$URL
+
+```
+
+Sort results by distance to polygon
+```{r}
+
 library(geosphere)
 #find nearest coord in each feature
 nearestInFeature <- function(feat){
@@ -80,70 +84,74 @@ nearestInFeature <- function(feat){
 
 }
 nearestDist <- sapply(results_json$features,nearestInFeature)
+
 #sort by nearest
 results_json$features <- results_json$features[order(nearestDist)]
+
+
 
 allUrls <- sapply(results_json$features,FUN = function(x){x$properties$URL})
 geometry <- first_result$geometry$type
 coordinates <- first_result$geometry$coordinates[[1]]
 
-print(paste("Number of Results =", number_of_results))
-print(paste("URL of First Result =", url))
-print(paste("Coordinates of First Result = ", coordinates))
+
+#print first 10 results
+print(allUrls[1:10])
 ```
 
-Step 8: Retrieve information about a selected URL resource.
+Numbers 2 & 7 are what we're looking for.
+
+Load in LinkedEarth LiPD 
 
 ```{r}
-dataset_url <- "http://get.iedadata.org/doi/310660"
+library(lipdR)
+LE.BasinPond <- readLipd(allUrls[7])
 ```
 
-Step 9: Set the web service call for extracting a set of metadata.
+Load in Neotoma file as a LiPD 
 
 ```{r}
-search_type <- "graph/details"
+library(geoChronR)
+library(neotoma)
+site = get_site("Basin Pond")
+
+L = neotoma2Lipd(site = site)
+#estimate uncertainty from range
+L$chronData[[2]]$measurementTable[[1]] = estimateUncertaintyFromRange(L$chronData[[2]]$measurementTable[[1]])
+detach("package:geojson", character.only = TRUE) #avoid conflict with plotting
+
+library(package = geoChronR,lib.loc = "/Library/Frameworks/R.framework/Versions/3.4/Resources/library")
+L = runBacon(L,which.chron = 2,baconDir = "~/Dropbox/MacBacon/",modelNum = 2,
+             remove.rejected = FALSE,labIDVar="chron.control.id", age14CVar = NULL, age14CuncertaintyVar = NULL, ageVar = "age",ageUncertaintyVar = "unc.estimate", depthVar = "depth", reservoirAge14CVar = NULL,reservoirAge14CUncertaintyVar = NULL,rejectedAgesVar=NULL,useMarine = FALSE,BaconAsk = FALSE, baconAccMean = 1,BaconSuggest = FALSE)
+              
 ```
 
-Step 10: Create the URL for the RESTful web service call.
 
 ```{r}
-domain_url <- "http://geodex.org/api/v1/"
-request_url <- paste(domain_url, search_type, sep="")
+plotChron(L,chron.number = 2,model.num = 2)
 ```
 
-Step 11: Create the GET parameter for this call.
 
 ```{r}
-params_list <- list(r = dataset_url)
-```
+library(lipdR)
+L2 <- readLipd("http://wiki.linked.earth/wiki/index.php/Special:WTLiPD?op=export&lipdid=NAm-BasinPond.Gajewski.1988")
+length(L2$paleoData[[1]]$measurementTable[[1]]$temperature$values)
 
-Step 12: Execute the RESTful web service call.
+L$paleoData[[1]]$measurementTable[[1]]$temperature <- L2$paleoData[[1]]$measurementTable[[1]]$temperature
+
+
+L <- mapAgeEnsembleToPaleoData(L = L,which.chron = 2,which.paleo = 1,which.model = 2,which.ens = 1,which.pmt = 1,age.var = "ageEnsemble")
+```
+Now plot temperature with age uncertainty
 
 ```{r}
-r <- GET(request_url, query = params_list)
-results <- content(r, "text", encoding = "ISO-8859-1")
+library(ggplot2)
+temp <- selectData(L,"temperature")
+ageEnsemble <- selectData(L,"ageEnsemble")
+
+plot <- plotTimeseriesEnsRibbons(ageEnsemble,temp)
+plot <- plotTimeseriesEnsLines(ageEnsemble,temp,color = "red",add.to.plot = plot,maxPlotN = 5)+
+  scale_x_reverse("Age (yr BP)")
+print(plot)
 ```
-
-Step 13: Print the results in a user friendly way.
-
-```{r}
-results_json <- fromJSON(results)
-print(paste("URI =", results_json$S))
-print(paste("Alternate Name =", results_json$Aname))
-print(paste("Name =", results_json$Name))
-print(paste("URL =", results_json$URL))
-print(paste("Description =", results_json$Description))
-print(paste("Citation =", results_json$Citation))
-print(paste("Data Published =", results_json$Datepublished))
-print(paste("Dataset Download Link =", results_json$Curl))
-print(paste("Keywords =", results_json$Keywords))
-print(paste("License =", results_json$License))
-```
-
-
-
-
-
-
-
 
