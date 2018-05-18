@@ -3,6 +3,7 @@ title: "LinkedEarth - Neotoma P418 Use Case"
 output:
   html_document:
     df_print: paged
+  pdf_document: default
 ---
 
 Step 1: Create a polygon to search for our site.
@@ -105,7 +106,8 @@ Load in LinkedEarth LiPD
 
 ```{r}
 library(lipdR)
-LE.BasinPond <- readLipd(allUrls[7])
+#L2 <- readLipd(allUrls[7])
+L2 <- readLipd("~/Downloads/NAm-BasinPond.Gajewski.1988.lpd")
 ```
 
 Load in Neotoma file as a LiPD 
@@ -118,13 +120,21 @@ site = get_site("Basin Pond")
 L = neotoma2Lipd(site = site)
 #estimate uncertainty from range
 L$chronData[[2]]$measurementTable[[1]] = estimateUncertaintyFromRange(L$chronData[[2]]$measurementTable[[1]])
-detach("package:geojson", character.only = TRUE) #avoid conflict with plotting
+```
 
-library(package = geoChronR,lib.loc = "/Library/Frameworks/R.framework/Versions/3.4/Resources/library")
+```{r}
+detach("package:geojson",character.only = TRUE)
+```
+
+
+
+
+```{r,echo=FALSE}
 L = runBacon(L,which.chron = 2,baconDir = "~/Dropbox/MacBacon/",modelNum = 2,
              remove.rejected = FALSE,labIDVar="chron.control.id", age14CVar = NULL, age14CuncertaintyVar = NULL, ageVar = "age",ageUncertaintyVar = "unc.estimate", depthVar = "depth", reservoirAge14CVar = NULL,reservoirAge14CUncertaintyVar = NULL,rejectedAgesVar=NULL,useMarine = FALSE,BaconAsk = FALSE, baconAccMean = 1,BaconSuggest = FALSE)
               
 ```
+
 
 
 ```{r}
@@ -133,9 +143,7 @@ plotChron(L,chron.number = 2,model.num = 2)
 
 
 ```{r}
-library(lipdR)
-L2 <- readLipd("http://wiki.linked.earth/wiki/index.php/Special:WTLiPD?op=export&lipdid=NAm-BasinPond.Gajewski.1988")
-length(L2$paleoData[[1]]$measurementTable[[1]]$temperature$values)
+
 
 L$paleoData[[1]]$measurementTable[[1]]$temperature <- L2$paleoData[[1]]$measurementTable[[1]]$temperature
 

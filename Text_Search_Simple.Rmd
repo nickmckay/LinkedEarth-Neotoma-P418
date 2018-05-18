@@ -96,7 +96,7 @@ for (i in c(1:length(results_json))){
 Step 12: Retrieve information about a selected URL resource.
 
 ```{r}
-dataset_url <- "http://get.iedadata.org/doi/310660"
+dataset_url <- "http://wiki.linked.earth/NAm-BasinPond.Gajewski.1988"
 ```
 
 Step 13: Set the web service call for extracting a set of metadata.
