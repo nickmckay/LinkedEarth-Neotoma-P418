@@ -102,12 +102,98 @@ print(allUrls[1:10])
 
 Numbers 2 & 7 are what we're looking for.
 
+
+Explore the metadata for the LinkedEarth result
+
+```{r}
+dataset_url <- allUrls[7]
+```
+
+Step 13: Set the web service call for extracting a set of metadata.
+
+```{r}
+search_type <- "graph/details"
+```
+Step 14: Create the URL for the RESTful web service call.
+
+```{r}
+domain_url <- "http://geodex.org/api/v1/"
+
+request_url <- paste(domain_url, search_type, sep="")
+```
+
+Step 15: Create the GET parameter for this call.
+
+```{r}
+params_list <- list(r = dataset_url)
+```
+
+Step 16: Execute the RESTful web service call.
+
+```{r}
+r <- GET(request_url, query = params_list)
+results <- content(r, "text", encoding = "ISO-8859-1")
+```
+
+Step 17: Print the results in a user friendly way.
+
+```{r}
+results_json <- fromJSON(results)
+print(paste("URI =", results_json$S))
+print(paste("Alternate Name =", results_json$Aname))
+print(paste("Name =", results_json$Name))
+print(paste("URL =", results_json$URL))
+print(paste("Description =", results_json$Description))
+print(paste("Citation =", results_json$Citation))
+print(paste("Data Published =", results_json$Datepublished))
+print(paste("Dataset Download Link =", results_json$Curl))
+print(paste("Keywords =", results_json$Keywords))
+print(paste("License =", results_json$License))
+```
+
+
 Load in LinkedEarth LiPD 
 
 ```{r}
 library(lipdR)
 #L2 <- readLipd(allUrls[7])
-L2 <- readLipd("~/Downloads/NAm-BasinPond.Gajewski.1988.lpd")
+L2 <- readLipd(results_json$Curl)
+```
+
+
+Explore the metadata for the Neotoma result
+
+```{r}
+dataset_url <- allUrls[2]
+```
+
+Step 15: Create the GET parameter for this call.
+
+```{r}
+params_list <- list(r = dataset_url)
+```
+
+Step 16: Execute the RESTful web service call.
+
+```{r}
+r <- GET(request_url, query = params_list)
+results <- content(r, "text", encoding = "ISO-8859-1")
+```
+
+Step 17: Print the results in a user friendly way.
+
+```{r}
+results_json <- fromJSON(results)
+print(paste("URI =", results_json$S))
+print(paste("Alternate Name =", results_json$Aname))
+print(paste("Name =", results_json$Name))
+print(paste("URL =", results_json$URL))
+print(paste("Description =", results_json$Description))
+print(paste("Citation =", results_json$Citation))
+print(paste("Data Published =", results_json$Datepublished))
+print(paste("Dataset Download Link =", results_json$Curl))
+print(paste("Keywords =", results_json$Keywords))
+print(paste("License =", results_json$License))
 ```
 
 Load in Neotoma file as a LiPD 
@@ -116,7 +202,7 @@ Load in Neotoma file as a LiPD
 library(geoChronR)
 library(neotoma)
 site = get_site("Basin Pond")
-
+site2 = data.frame(site.id = 234)
 L = neotoma2Lipd(site = site)
 #estimate uncertainty from range
 L$chronData[[2]]$measurementTable[[1]] = estimateUncertaintyFromRange(L$chronData[[2]]$measurementTable[[1]])
