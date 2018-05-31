@@ -1,18 +1,27 @@
 ---
-title: "LinkedEarth - Neotoma P418 Use Case"
+title: "LinkedEarth - Neotoma - P418 Use Case"
 output:
+  pdf_document: default
   html_document:
     df_print: paged
-  pdf_document: default
 ---
 
-Step 1: Create a polygon to search for our site.
+#Isabel & age uncertainty
+
+Allow me to paint a picture for you. A user (let's call her Isabel) is interested in investigating the impact of time uncertainty on a pollen-based temperature reconstruction at Basin Pond. The temperature data are available at LinkedEarth, but the geochronologic data and depth data are not archived there. The pollen, depth and geochronologic data are available at Neotoma, but the temperature data are not. Isabel wants to combine these two datasets, and then use the GeoChronR package to do age-uncertain viusalization.
+
+This is a story of how she might do that.
+
+
+
+
+
+1. Isabel decides to search for the Basin Pond data geographically, and creates a box around the site.
 
 ```{r}
 locpoly <- matrix(c(-70,-71,-71,-70,45,45,44,44),ncol=2,byrow = F)
-
 ```
-Step 2: Convert array to GeoJSON FeatureCollection.
+2. She then converts that array to GeoJSON FeatureCollection, so she can query GeoDex
 
 ```{r}
 #install.packages("geojson")
@@ -25,26 +34,21 @@ feature_collection <- geojson::featurecollection(feature)
 feature_collection_str <- geo_pretty(feature_collection)
 ```
 
-Step 3: Set type of search for spatial search.
+3: She then sets options for spatial searching, the domain and request URL details. Please see http://geodex.org/swagger-ui/ for a complete description of the web service call formats.
 
 ```{r}
 search_type <- "spatial/search/object"
-```
-
-Step 4: Set the request domain URL for the geodex web service. Please see http://geodex.org/swagger-ui/ for a complete description of the web service call formats.
-
-```{r}
 domain_url <- "http://geodex.org/api/v1/"
 request_url <- paste(domain_url, search_type, sep="")
 ```
 
-Step 5: Create an R list data structure to hold URL submission parameters
+4. She creates an R list data structure to hold URL submission parameters
 
 ```{r}
 params_list <- list(geowithin = feature_collection_str)
 ```
 
-Step 6: Make call to the Geodex RESTful web service using the requests package.
+5. Then makes a call to the Geodex RESTful web service using the requests package.
 
 ```{r}
 library(httr)
@@ -52,20 +56,17 @@ r <- GET(request_url, query = params_list)
 results <- content(r, "text", encoding = "ISO-8859-1")
 ```
 
-Step 7: Expore results.
-
+6. OK! The first results. She takes a look at what her spatial search returned.
 ```{r}
 library(rjson)
 results_json <- fromJSON(results)
 features <- results_json$features
 number_of_results <- length(features)
 first_result <- features[[1]]
-
 url <- first_result$properties$URL
-
 ```
 
-Sort results by distance to polygon
+7. Since it's a spatial search, she decides to sort results by distance to polygon
 ```{r}
 
 library(geosphere)
@@ -88,33 +89,24 @@ nearestDist <- sapply(results_json$features,nearestInFeature)
 
 #sort by nearest
 results_json$features <- results_json$features[order(nearestDist)]
-
-
-
 allUrls <- sapply(results_json$features,FUN = function(x){x$properties$URL})
 geometry <- first_result$geometry$type
 coordinates <- first_result$geometry$coordinates[[1]]
-
 
 #print first 10 results
 print(allUrls[1:10])
 ```
 
-Numbers 2 & 7 are what we're looking for.
+She recognizes those results! Numbers 2 & 7 are what she's looking for.
 
-
-Explore the metadata for the LinkedEarth result
+8. Now she explores the metadata for the LinkedEarth result to find the download link, doing another query to geodex
 
 ```{r}
 dataset_url <- allUrls[7]
-```
 
-Step 13: Set the web service call for extracting a set of metadata.
-
-```{r}
 search_type <- "graph/details"
 ```
-Step 14: Create the URL for the RESTful web service call.
+9. She creates the URL for the RESTful web service call.
 
 ```{r}
 domain_url <- "http://geodex.org/api/v1/"
@@ -122,20 +114,15 @@ domain_url <- "http://geodex.org/api/v1/"
 request_url <- paste(domain_url, search_type, sep="")
 ```
 
-Step 15: Create the GET parameter for this call.
+10. Creates and executes the GET parameter for this call.
 
 ```{r}
 params_list <- list(r = dataset_url)
-```
-
-Step 16: Execute the RESTful web service call.
-
-```{r}
 r <- GET(request_url, query = params_list)
 results <- content(r, "text", encoding = "ISO-8859-1")
 ```
 
-Step 17: Print the results in a user friendly way.
+11. And prints the results in a useful way.
 
 ```{r}
 results_json <- fromJSON(results)
@@ -152,35 +139,34 @@ print(paste("License =", results_json$License))
 ```
 
 
-Load in LinkedEarth LiPD 
+12. Aha! There's the download URL she needs! She'll use the LiPD-utilities package to load that dataset into R
 
 ```{r}
+#devtools::install_github("nickmckay/lipd-utilities",subdir = "R")
 library(lipdR)
-#L2 <- readLipd(allUrls[7])
 L2 <- readLipd(results_json$Curl)
 ```
 
-
-Explore the metadata for the Neotoma result
+13. Now to get her hands on those Neotoma data. She needs the site ID from the Neotoma metadata, and performs another GeoDex query to achieve this...
 
 ```{r}
 dataset_url <- allUrls[2]
 ```
 
-Step 15: Create the GET parameter for this call.
+... creating the GET parameter for this call ...
 
 ```{r}
 params_list <- list(r = dataset_url)
 ```
 
-Step 16: Execute the RESTful web service call.
+... and executing the RESTful web service call.
 
 ```{r}
 r <- GET(request_url, query = params_list)
 results <- content(r, "text", encoding = "ISO-8859-1")
 ```
 
-Step 17: Print the results in a user friendly way.
+14. She prints these results in a user friendly way.
 
 ```{r}
 results_json <- fromJSON(results)
@@ -196,47 +182,40 @@ print(paste("Keywords =", results_json$Keywords))
 print(paste("License =", results_json$License))
 ```
 
-Load in Neotoma file as a LiPD 
+TBD: This search needs needs to return a site.id or a site name.
+
+15. Now she can load in Neotoma data as a LiPD object too!
 
 ```{r}
+#devtools::install_github("nickmckay/geochronr")
 library(geoChronR)
 library(neotoma)
-site = get_site("Basin Pond")
-site2 = data.frame(site.id = 234)
-L = neotoma2Lipd(site = site)
+L = neotoma2Lipd(site = 234)#PULL THIS FROM QUERY RESULTS!
 #estimate uncertainty from range
 L$chronData[[2]]$measurementTable[[1]] = estimateUncertaintyFromRange(L$chronData[[2]]$measurementTable[[1]])
+detach("package:geojson",character.only = TRUE) #deal with polygon conflict!
 ```
 
+16. Now Isabel uses the geochronologic data from LinkedEarth to create a new age model in Bacon.
 ```{r}
-detach("package:geojson",character.only = TRUE)
-```
-
-
-
-
-```{r,echo=FALSE}
 L = runBacon(L,which.chron = 2,baconDir = "~/Dropbox/MacBacon/",modelNum = 2,
              remove.rejected = FALSE,labIDVar="chron.control.id", age14CVar = NULL, age14CuncertaintyVar = NULL, ageVar = "age",ageUncertaintyVar = "unc.estimate", depthVar = "depth", reservoirAge14CVar = NULL,reservoirAge14CUncertaintyVar = NULL,rejectedAgesVar=NULL,useMarine = FALSE,BaconAsk = FALSE, baconAccMean = 1,BaconSuggest = FALSE)
               
 ```
 
 
-
+17. And geoChronR to visualize her new age model and a handful of ensemble members
 ```{r}
 plotChron(L,chron.number = 2,model.num = 2)
 ```
 
-
+18. Next, she takes the temperature data from the LinkedEarth file, and ports it into the Neotoma-derived object, and maps the age ensemble onto the depths associated with the temperature values.
 ```{r}
-
-
 L$paleoData[[1]]$measurementTable[[1]]$temperature <- L2$paleoData[[1]]$measurementTable[[1]]$temperature
-
-
 L <- mapAgeEnsembleToPaleoData(L = L,which.chron = 2,which.paleo = 1,which.model = 2,which.ens = 1,which.pmt = 1,age.var = "ageEnsemble")
 ```
-Now plot temperature with age uncertainty
+
+19. Finally, Isabel creates a plot that shows the impact of age uncertainty on the temperature dataset.
 
 ```{r}
 library(ggplot2)
@@ -249,3 +228,4 @@ plot <- plotTimeseriesEnsLines(ageEnsemble,temp,color = "red",add.to.plot = plot
 print(plot)
 ```
 
+The end.
